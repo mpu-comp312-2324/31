@@ -1,102 +1,76 @@
-import sqlite3 from 'sqlite3';
-sqlite3.verbose();
-import { open } from 'sqlite';
-
-const db = await open({
-  filename: './db.sqlite',
-  driver: sqlite3.Database
-});
-
 import express from 'express';
-let api = express.Router();
+import sqlite3 from 'sqlite3';
 
-api.get('/products', async (req, res) => {
-  const q = "SELECT * FROM Product";
-  try {
-    const result = await db.all(q);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json(err);
+const app = express();
+const port = 3000;
+
+app.use(express.json());
+
+// Connect to the SQLite database
+const db = new sqlite3.Database('./db.sqlite', (err) => {
+  if (err) {
+    console.error(err.message);
+  } else {
+    console.log('Connected to the SQLite database.');
   }
 });
 
-api.delete('/products/:pid', async (req, res) => {
-  if (req.params.pid == undefined) { return res.sendStatus(400); }
-  let pid = parseInt(req.params.pid);
-  try {
-    const q = `DELETE FROM Product WHERE id = ${pid}`;
-    await db.run(q);
-    res.status(200).json({});
-  } catch (err) {
-    res.status(500).json(err);
-  }
+// Retrieve the stocktaking list
+app.get('/api/stocklist', (req, res) => {
+  db.all('SELECT * FROM stocktaking', (err, rows) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ error: 'Failed to fetch stock list' });
+    } else {
+      res.json(rows);
+    }
+  });
 });
 
-api.use(express.json());  // middleware that parses incoming requests with JSON payloads in the body
-
-api.put('/products/:pid', async (req, res) => {
-  if (req.params.pid == undefined) { return res.sendStatus(400); }
-  if (req.body.productName == undefined
-    || req.body.category == undefined
-    || req.body.unitPrice == undefined
-    || req.body.unitsInStock == undefined) {
-    return res.sendStatus(400);
-  }
-  const pid = parseInt(req.params.pid);
-  const valuesUpdateProduct = {
-    $id: pid,
-    $productName: req.body.productName,
-    $category: req.body.category,
-    $unitPrice: req.body.unitPrice,
-    $unitsInStock: req.body.unitsInStock
-  }
-  // todo: further checking on valid values
-
-  const q1 = `UPDATE Product SET 
-        productName = $productName, 
-        category = $category, 
-        unitPrice = $unitPrice, 
-        unitsInStock = $unitsInStock WHERE id = $id`;
-  const q2 = "SELECT * FROM Product WHERE id = $id";
-
-  try {
-    await db.run(q1, valuesUpdateProduct);
-    let result = await db.get(q2, { $id: pid });
-    res.status(200).json(result);
-  } catch (err) {
-    res.status(500).json(err);
-  }
+// Create a stocktaking list item
+app.post('/api/stocklist', (req, res) => {
+  const { description, maxStock, currentStock } = req.body;
+  const stmt = db.prepare('INSERT INTO stocktaking (description, maxStock, currentStock) VALUES (?, ?, ?)');
+  stmt.run(description, maxStock, currentStock, (err) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ error: 'Failed to create item' });
+    } else {
+      res.sendStatus(201);
+    }
+  });
 });
 
-api.post('/products', async (req, res) => {
-  if (req.body.productName == undefined
-    || req.body.category == undefined
-    || req.body.unitPrice == undefined
-    || req.body.unitsInStock == undefined) {
-    return res.sendStatus(400);
-  }
-
-  let valuesNewProduct = {
-    $productName: req.body.productName,
-    $category: req.body.category,
-    $unitPrice: req.body.unitPrice,
-    $unitsInStock: req.body.unitsInStock
-  };
-  // todo: further checking on valid values
-
-  const q1 = `INSERT INTO Product (productName, category, unitPrice, unitsInStock)
-    VALUES ($productName, $category, $unitPrice, $unitsInStock)`;
-
-  const q2 = "SELECT * FROM Product WHERE id = $id";
-
-  try {
-    const insResult = await db.run(q1, valuesNewProduct);
-    const pid = insResult.lastID;
-    let result = await db.get(q2, { $id: pid });
-    res.status(200).json(result);
-  } catch (err) {
-    res.status(500).json(err);
-  }
+// Update a stocktaking list item
+app.put('/api/stocklist/:id', (req, res) => {
+  const id = req.params.id;
+  const { description, maxStock, currentStock } = req.body;
+  const stmt = db.prepare('UPDATE stocktaking SET description = ?, maxStock = ?, currentStock = ? WHERE pk = ?');
+  stmt.run(description, maxStock, currentStock, id, (err) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ error: 'Failed to update item' });
+    } else {
+      res.sendStatus(200);
+    }
+  });
 });
 
-export default api;
+// Delete a stocktaking list item
+app.delete('/api/stocklist/:id', (req, res) => {
+  const id = req.params.id;
+  const stmt = db.prepare('DELETE FROM stocktaking WHERE pk = ?');
+  stmt.run(id, (err) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ error: 'Failed to delete item' });
+    } else {
+      res.sendStatus(200);
+    }
+  });
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
