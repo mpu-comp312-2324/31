@@ -4,14 +4,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 import express from "express";
-let app = express();
+const app = express();
 
 import morgan from "morgan";
 app.use(morgan("tiny"));
 
 import api from "./api.mjs";
 app.use("/api", api);
-
 app.use(express.static(__dirname + "/dist"));
 
 const port = 8000;
