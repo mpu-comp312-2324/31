@@ -2,53 +2,42 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import express from 'express';
 
-const dbPromise = open({
+const dbPromise = await open({
   filename: './db.sqlite',
   driver: sqlite3.Database
-});
+})
 
 const api = express.Router();
+api.use(express.json());
 
-// Retrieve the stocktaking list
+// Retrieve stocktaking list
 api.get('/stocktaking-list', async (req, res) => {
   try {
     const db = await dbPromise;
-    const stocktakingList = await db.all('SELECT * FROM stocktaking_list');
-    res.json(stocktakingList);
+    const rows = await db.all('SELECT * FROM stocktaking_list');
+    res.json(rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
 // Create a new stocktaking list item
 api.post('/stocktaking-list', async (req, res) => {
   try {
-    const { description, maxStock, currentStock } = req.body;
-
-    // Validate the inputs
-    if (!description || !maxStock || !currentStock) {
-      return res.status(400).json({ error: 'Invalid input' });
+    const { name, description, maxStock, currentStock } = req.body;
+    if (!name || !description || !maxStock || !currentStock) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const db = await dbPromise;
     const result = await db.run(
-      'INSERT INTO stocktaking_list (description, maxStock, currentStock) VALUES (?, ?, ?)',
-      description,
-      maxStock,
-      currentStock
+      'INSERT INTO stocktaking_list (name, description, maxStock, currentStock) VALUES (?, ?, ?, ?)',
+      [name, description, maxStock, currentStock]
     );
 
-    // Get the newly created item
-    const newItem = await db.get(
-      'SELECT * FROM stocktaking_list WHERE pk = ?',
-      result.lastID
-    );
-
-    res.status(201).json(newItem);
+    res.json({ id: result.lastID });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -56,20 +45,15 @@ api.post('/stocktaking-list', async (req, res) => {
 api.put('/stocktaking-list/:itemId', async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { description, maxStock, currentStock } = req.body;
-
-    // Validate the inputs
-    if (!description || !maxStock || !currentStock) {
-      return res.status(400).json({ error: 'Invalid input' });
+    const { name, description, maxStock, currentStock } = req.body;
+    if (!name || !description || !maxStock || !currentStock) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const db = await dbPromise;
     const result = await db.run(
-      'UPDATE stocktaking_list SET description = ?, maxStock = ?, currentStock = ? WHERE pk = ?',
-      description,
-      maxStock,
-      currentStock,
-      itemId
+      'UPDATE stocktaking_list SET name = ?, description = ?, maxStock = ?, currentStock = ? WHERE id = ?',
+      [name, description, maxStock, currentStock, itemId]
     );
 
     if (result.changes === 0) {
@@ -78,8 +62,7 @@ api.put('/stocktaking-list/:itemId', async (req, res) => {
 
     res.sendStatus(204);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -90,7 +73,7 @@ api.delete('/stocktaking-list/:itemId', async (req, res) => {
 
     const db = await dbPromise;
     const result = await db.run(
-      'DELETE FROM stocktaking_list WHERE pk = ?',
+      'DELETE FROM stocktaking_list WHERE id = ?',
       itemId
     );
 
@@ -100,8 +83,7 @@ api.delete('/stocktaking-list/:itemId', async (req, res) => {
 
     res.sendStatus(204);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
