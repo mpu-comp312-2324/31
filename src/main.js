@@ -1,8 +1,23 @@
 import { createApp } from 'vue';
-import App from '../app.vue';
+import app from '../app.vue';
 
-// Create a new Vue app instance
-const app = createApp(App);
+const app = createApp(app);
 
-// Mount the app to the DOM
-app.mount('#app');
+app.mixin({
+    mounted() {
+      // Make the GET request to fetch the stocktaking list
+      fetch('/stocktaking-list')
+        .then(response => response.json())
+        .then(data => {
+          // Handle the response data
+          console.log(data);
+          // Do something with the data, e.g., update the component's data or state
+        })
+        .catch(error => {
+          // Handle any errors
+          console.error(error);
+        });
+    },
+  });
+  
+  app.mount('#app');
