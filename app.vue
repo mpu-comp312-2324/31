@@ -29,6 +29,7 @@
 </template>
 
 <script>
+const urlAPI = "http://localhost:8000/api/stocktaking-list/";
 export default {
   data() {
     return {
@@ -42,12 +43,12 @@ export default {
     };
   },
   created() {
-    this.fetchStocktakingList();
+    this.fetchStocktakingList(urlAPI);
   },
   methods: {
-    async fetchStocktakingList() {
+    async fetchStocktakingList(urlAPI) {
       try {
-        const response = await fetch('/stocktaking-list');
+        const response = await fetch(urlAPI);
         if (!response.ok) {
           throw new Error('Failed to fetch stocktaking list');
         }
@@ -58,7 +59,7 @@ export default {
     },
     async addProduct() {
       try {
-        const response = await fetch('/stocktaking-list', {
+        const response = await fetch(urlAPI, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -81,7 +82,7 @@ export default {
     },
     async deleteProduct(productId) {
       try {
-        const response = await fetch(`/stocktaking-list/${productId}`, {
+        const response = await fetch(`${urlAPI$}${productId}`, {
           method: 'DELETE'
         });
         if (!response.ok) {
@@ -106,6 +107,7 @@ export default {
 </script>
 
 <style>
+/* Add your custom styles here */
 .app {
   font-family: Arial, sans-serif;
   margin: 20px;
