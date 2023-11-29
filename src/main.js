@@ -1,7 +1,7 @@
 import { createApp } from 'vue';
-import app from '../app.vue';
+import App from '../app.vue';
 
-const app = createApp(app);
+const app = createApp(App);
 
 app.mixin({
     mounted() {
